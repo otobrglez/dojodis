@@ -43,12 +43,15 @@ object ServerApp extends zio.ZIOAppDefault:
         .ensuring(connections.update(_ - 1))
     yield ()
 
+  def getPort = System.env("PORT").map(_.map(_.toInt)).map(_.getOrElse(6666))
+
   def program =
     for
-      _            <- printLine(("🍤" * 10) + " dojodis @ port 6666 " + ("🍤" * 10))
+      port         <- getPort
+      _            <- printLine(("🍤" * 10) + s" dojodis @ port ${port} " + ("🍤" * 10))
       connections  <- Ref.make(0)
       socketServer <- ZStream
-        .fromSocketServer(6666)
+        .fromSocketServer(port)
         .mapZIOParUnordered(10)(connectionHandler(connections))
         .runDrain
         .fork
