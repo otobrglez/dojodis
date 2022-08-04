@@ -9,7 +9,7 @@ import java.io.{IOException, PrintWriter}
 import java.net.{InetAddress, ServerSocket, Socket as ClientSocket}
 import com.pinkstack.dojodis.RESP.*
 
-object ServerAppV3 extends zio.ZIOAppDefault:
+object ServerApp extends zio.ZIOAppDefault:
   def commandHandler(command: Commands): ZIO[Any, Throwable, Reply] =
     command match
       case get: Get         => succeed(Ok())
@@ -43,23 +43,16 @@ object ServerAppV3 extends zio.ZIOAppDefault:
         .ensuring(connections.update(_ - 1))
     yield ()
 
-  def server =
+  def program =
     for
-      connections <- Ref.make(0)
-      ss          <- ZStream
+      _            <- printLine(("🍤" * 10) + " dojodis @ port 6666 " + ("🍤" * 10))
+      connections  <- Ref.make(0)
+      socketServer <- ZStream
         .fromSocketServer(6666)
         .mapZIOParUnordered(10)(connectionHandler(connections))
         .runDrain
         .fork
-      _           <- ss.join
+      _            <- socketServer.join
     yield ()
 
-  def program =
-    for
-      _   <- printLine("Booting BetterApp")
-      fib <- server.fork
-      _   <- fib.join
-    yield ()
-
-  def run =
-    program
+  def run = program
