@@ -1,6 +1,15 @@
-# dojodis
+# dojodis 🍤
 
-[dojodis] is an experimental implementation of [Redis][redis] in [Scala ZIO][zio].
+[dojodis] is an experimental clone of [Redis][redis] in [Scala ZIO][zio].
+
+## Development
+
+```bash
+PORT=8888 sbt run
+
+redis-cli -p 8888 set my_name "Oto Brglez"
+redis-cli -p 8888 get my_name
+```
 
 ## Resources
 
