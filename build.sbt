@@ -27,4 +27,4 @@ scalacOptions ++= Seq(
 
 fork / run := true
 
-testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))

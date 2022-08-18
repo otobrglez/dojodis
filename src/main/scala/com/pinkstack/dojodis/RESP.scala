@@ -1,8 +1,10 @@
 package com.pinkstack.dojodis
 
-import zio.{UIO, ZIO}
+import zio.{Chunk, UIO, ZIO}
 import zio.ZIO.succeed
+import zio.stream.ZPipeline
 
+import java.nio.charset.StandardCharsets
 import scala.compiletime.{constValue, erasedValue, summonInline}
 import scala.deriving.*
 
@@ -43,11 +45,19 @@ object RESP:
     case ("get", Seq(key))           => Right(Get(key))
     case ("ping", _)                 => Right(Ping())
     case ("exists", Seq(key, _))     => Right(Exists(key))
-    case ("set", Seq(key, rest*))    => Right(Set(key, rest.head))
+    case ("set", Seq(key, rest*))    =>
+      println("##### SET 1")
+      println(rest)
+      Right(Set(key, rest.head))
+    case ("set", Seq(key, rest))     =>
+      println(s"##### SET 2 ${rest}")
+      Right(Set(key, "what"))
     case ("incr", Seq(key, _))       => Right(Incr(key))
     case ("incrby", Seq(key, rest*)) => Right(IncrBy(key, rest.head))
     case ("command", _)              => Right(Command())
-    case (cmd, _)                    => Left(UnknownCommandError(s"Unsupported command \"${cmd}\"."))
+    case (cmd, args)                 =>
+      println(args)
+      Left(UnknownCommandError(s"Unsupported command \"${cmd}\"."))
   }
 
   def filterParams: CommandStruct => CommandStruct = (command, params) =>
@@ -66,6 +76,9 @@ object RESP:
   val parse: String => Either[ParsingError, Commands] = processCommandArray
 
   def encodeCommand(line: String): ZIO[Any, ParsingError, Commands] =
+    println(s"~~~ LINE = ${line}")
+    println(s"~~~ LINE = ${line.split("\\r\\n").mkString("#")}")
+    // println(s"LINE = ${line.replaceAll("\\r\\n", "__")}")
     ZIO.fromEither(parse(line))
 
   def decodeReply(reply: Reply): UIO[String] = succeed {
@@ -78,6 +91,29 @@ object RESP:
         FirstByte.Array.string + strings.length.toString + "\r\n" + strings.mkString("\r\n")
     }
   }
+  
+  sealed trait RESPCommand
+  case object Empty                                                         extends RESPCommand
+  case class Partial(size: Int = 0, arguments: Array[String] = Array.empty) extends RESPCommand
+  case class SuccessfulCommand(arguments: Array[String])                    extends RESPCommand
+  
+  
+  def commandsParser = ZPipeline
+    //.splitOnChunk(Chunk.fromIterable("\r\n".getBytes(StandardCharsets.UTF_8)))
+    //.map(_.map(_.toChar).mkString)
+    .scan[String, RESPCommand](Empty) {
+      case (Empty | _: SuccessfulCommand, chunk) if chunk.startsWith("*") =>
+        Partial(size = chunk.substring(1).toInt * 2)
+      case (Empty | _: SuccessfulCommand, _) => Empty
+      case (command@Partial(size, _), _) if size % 2 == 0 =>
+        command.copy(size = size - 1)
+      case (command@Partial(size, arguments), chunk) if size - 1 != 0 =>
+        command.copy(size = size - 1, arguments = arguments ++ Array(chunk))
+      case (Partial(size, arguments), chunk) if size - 1 == 0 =>
+        SuccessfulCommand(arguments ++ Array(chunk))
+      case _ => Empty
+    }
+    // .collectType[SuccessfulCommand]
 
 /*
 - https://github.com/griggt/dp/blob/44b317a9c352a3097eaa74dc83d2a7e4a4ac462c/tests/run/i10997.scala

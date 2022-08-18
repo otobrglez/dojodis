@@ -5,8 +5,7 @@ import zio.ZIO
 import shapeless3.deriving.*
 import zio.test.Annotations.*
 
-class RESPSpec extends zio.test.junit.JUnitRunnableSpec:
-
+object RESPSpec extends zio.test.junit.JUnitRunnableSpec:
   def spec = suite("Commands")(
     test("raw parsing") {
       assert(RESP.parse("*3\r\n$3\r\nset\r\n$4\r\nname\r\n$3\r\nOto\r\n"))(Assertion.isRight)
