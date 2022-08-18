@@ -11,6 +11,10 @@ redis-cli -p 8888 set my_name "Oto Brglez"
 redis-cli -p 8888 get my_name
 ```
 
+## Supported Commands
+
+dojodis server supports the following [Redis commands][commands]: [get], [set], [exists], [incr], [incrby], [ping]
+
 ## Resources
 
 - [RESP protocol spec](https://redis.io/docs/reference/protocol-spec/)
@@ -28,7 +32,6 @@ redis-cli -p 8888 get my_name
 - [Inline your boilerplate – harnessing Scala 3 metaprogramming without macros](https://scalac.io/blog/inline-your-boilerplate-harnessing-scala3-metaprogramming-without-macros/)
 - [From Scala 2 shapeless to Scala 3](http://www.limansky.me/posts/2021-07-26-from-scala-2-shapeless-to-scala-3.html)
 
-
 ## Authors
 
 - [Oto Brglez / @otobrglez][otobrglez]
@@ -42,3 +45,17 @@ redis-cli -p 8888 get my_name
 [zio]: https://zio.dev
 
 [otobrglez]: https://github.com/otobrglez
+
+[get]: https://redis.io/commands/get/
+
+[set]: https://redis.io/commands/set/
+
+[exists]: https://redis.io/commands/exists/
+
+[incr]: https://redis.io/commands/incr/
+
+[incrby]: https://redis.io/commands/incrby/
+
+[ping]: https://redis.io/commands/ping/
+
+[commands]: https://redis.io/commands/
