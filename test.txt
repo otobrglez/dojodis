@@ -1,0 +1,11 @@
+set me:first_name "Oto"
+set me:last_name "Brglez"
+set me:email "otobrglez@gmail.com"
+get me:first_name
+get me:last_name
+incr i
+incr j
+incrby i 10
+incrby j 42
+ping
+keys me:

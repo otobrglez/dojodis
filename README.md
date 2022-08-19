@@ -2,21 +2,39 @@
 
 [dojodis] is an experimental high-performance [Redis][redis] clone written [Scala ZIO][zio].
 
+## Supported Commands
+
+dojodis server supports the following [Redis commands][commands]: [get], [set], [exists], [incr], 
+[incrby], [ping], [del], [keys]
+
 ## Development
 
 ```bash
-PORT=8888 sbt run
+sbt run
 
-redis-cli -p 8888 set my_name "Oto Brglez"
-redis-cli -p 8888 get my_name
+redis-cli -p 6666 set my_name "Oto Brglez"
+redis-cli -p 6666 get my_name
+cat test.txt | redis-cli -h 127.0.0.1 -p 6666
 ```
 
-## Supported Commands
+## Silly benchmark
+Although this is considered to be a very experimental project I was really 
+tempted to make it compliant with [redis-benchmark] to see how it will perform.
 
-dojodis supports the following [Redis commands][commands]: [get], [set], [exists], [incr], [incrby], [ping]
+![Simple dojodis vs. Redis v7 benchmark](redis-7 vs dojodis (RPS).png)
+
+Benchmark was ran against `Redis server v=7.0.0 sha=00000000:0 malloc=libc bits=64 build=efafb97113670c08` 
+and here are the results for the common test suite. [Raw data](https://docs.google.com/spreadsheets/d/1j7HTP2EndiljV50Twluc2WLb1pS3Nt9yf1puyMWETRo/edit?usp=sharing)
+
+
+```bash
+redis-benchmark -h 127.0.0.1 -p 6666 -t get,set,incr,incrby,del -n 100000 -c 4 --csv
+```
+
 
 ## Resources
 
+- [Architecture Notes - Redis Explained](https://architecturenotes.co/redis/)
 - [RESP protocol spec](https://redis.io/docs/reference/protocol-spec/)
 - [A Java Parallel Server Through the Ages](https://www.cs.unh.edu/~charpov/programming-futures.html)
 - [Wrapping impure code with ZIO - Pierre Ricadat](https://medium.com/@ghostdogpr/wrapping-impure-code-with-zio-9265c219e2e)
@@ -31,6 +49,7 @@ dojodis supports the following [Redis commands][commands]: [get], [set], [exists
 - [kpodsiad / yamlator](https://github.com/kpodsiad/yamlator)
 - [Inline your boilerplate – harnessing Scala 3 metaprogramming without macros](https://scalac.io/blog/inline-your-boilerplate-harnessing-scala3-metaprogramming-without-macros/)
 - [From Scala 2 shapeless to Scala 3](http://www.limansky.me/posts/2021-07-26-from-scala-2-shapeless-to-scala-3.html)
+- [Redis Protocol Compatibility](https://redis.pjam.me/post/chapter-5-redis-protocol-compatibility/)
 
 ## Authors
 
@@ -59,3 +78,7 @@ dojodis supports the following [Redis commands][commands]: [get], [set], [exists
 [ping]: https://redis.io/commands/ping/
 
 [commands]: https://redis.io/commands/
+
+[del]: https://redis.io/del/
+
+[keys]: https://redis.io/commands/
