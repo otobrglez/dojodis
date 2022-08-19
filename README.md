@@ -4,7 +4,7 @@
 
 ## Supported Commands
 
-dojodis server supports the following [Redis commands][commands]: [get], [set], [exists], [incr], 
+dojodis server supports the following [Redis commands][commands]: [get], [set], [exists], [incr],
 [incrby], [ping], [del], [keys]
 
 ## Development
@@ -18,19 +18,19 @@ cat test.txt | redis-cli -h 127.0.0.1 -p 6666
 ```
 
 ## Silly benchmark
-Although this is considered to be a very experimental project I was really 
+
+Although this is considered to be a very experimental project I was really
 tempted to make it compliant with [redis-benchmark] to see how it will perform.
 
-![Simple dojodis vs. Redis v7 benchmark](redis-7 vs dojodis (RPS).png)
+![Simple dojodis vs. Redis v7 benchmark](redis-7_vs_dojodis.png)
 
-Benchmark was ran against `Redis server v=7.0.0 sha=00000000:0 malloc=libc bits=64 build=efafb97113670c08` 
-and here are the results for the common test suite. [Raw data](https://docs.google.com/spreadsheets/d/1j7HTP2EndiljV50Twluc2WLb1pS3Nt9yf1puyMWETRo/edit?usp=sharing)
-
+Benchmark was ran against `Redis server v=7.0.0 sha=00000000:0 malloc=libc bits=64 build=efafb97113670c08`
+and here are the results for the common test
+suite. [Raw data can be found here.](https://docs.google.com/spreadsheets/d/1j7HTP2EndiljV50Twluc2WLb1pS3Nt9yf1puyMWETRo/edit?usp=sharing)
 
 ```bash
 redis-benchmark -h 127.0.0.1 -p 6666 -t get,set,incr,incrby,del -n 100000 -c 4 --csv
 ```
-
 
 ## Resources
 
@@ -82,3 +82,5 @@ redis-benchmark -h 127.0.0.1 -p 6666 -t get,set,incr,incrby,del -n 100000 -c 4 -
 [del]: https://redis.io/del/
 
 [keys]: https://redis.io/commands/
+
+[redis-benchmark]: https://redis.io/docs/reference/optimization/benchmarks/
