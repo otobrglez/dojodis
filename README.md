@@ -1,6 +1,6 @@
 # dojodis 🍤
 
-[dojodis] is an experimental clone of [Redis][redis] in [Scala ZIO][zio].
+[dojodis] is an experimental high-performance [Redis][redis] clone written [Scala ZIO][zio].
 
 ## Development
 
@@ -13,7 +13,7 @@ redis-cli -p 8888 get my_name
 
 ## Supported Commands
 
-dojodis server supports the following [Redis commands][commands]: [get], [set], [exists], [incr], [incrby], [ping]
+dojodis supports the following [Redis commands][commands]: [get], [set], [exists], [incr], [incrby], [ping]
 
 ## Resources
 
