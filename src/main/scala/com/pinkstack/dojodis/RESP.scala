@@ -65,23 +65,21 @@ object RESP:
   val decodeCommand: SuccessfulCommand => ZIO[Any, Throwable, Commands] =
     command => fromEither(decodeRaw(command))
 
+  private val NL                        = "\r\n"
   val encodeReply: Reply => UIO[String] = reply =>
-    for replyPayload <- succeed(
-        reply match {
-          case _: Ok                   => "+OK" + "\r\n"
-          case Error(message)          => "-ERR " + message + "\r\n"
-          case _: Pong                 => "+PONG" + "\r\n"
-          case ArrayOfStrings(strings) =>
-            "*" + strings.length.toString + "\r\n" + strings
-              .map(s => "$" + s"${s.length}\r\n${s}")
-              .mkString("\r\n") + "\r\n"
-          case BulkString(string)      =>
-            "$" + string.length.toString + "\r\n" + string + "\r\n"
-          case Nil                     => "$-1" + "\r\n"
-          case Integer(value)          => s":$value" + "\r\n"
-        }
-      )
-    yield replyPayload
+    succeed(
+      reply match {
+        case _: Ok                   => "+OK"
+        case Error(message)          => "-ERR " + message
+        case _: Pong                 => "+PONG"
+        case ArrayOfStrings(strings) =>
+          "*" + strings.length.toString + NL + strings.map(s => "$" + s.length.toString + NL + s).mkString(NL)
+        case BulkString(string)      =>
+          "$" + string.length.toString + NL + string
+        case Nil                     => "$-1"
+        case Integer(value)          => s":$value"
+      }
+    ).map(_ + NL)
 
   def commandsScanner: ZPipeline[Any, Throwable, String, RESPCommand] = ZPipeline
     .scan[String, RESPCommand](Empty) {
