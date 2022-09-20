@@ -5,20 +5,21 @@
 package com.pinkstack.dojodis
 
 import com.pinkstack.dojodis.RESP.*
-import zio.{Ref, ZIO}
+import com.pinkstack.dojodis.commands.{Hacks, Strings}
 import zio.Console.printLine
 import zio.ZIO.succeed
 import zio.stm.TMap
 import zio.stream.{Stream, ZPipeline, ZStream}
-import commands.{Hacks, Strings}
+import zio.{Ref, ZIO}
+
 import java.io.IOException
 
 type DataMap     = TMap[String, String]
 type Connections = Ref[Int]
 
 object ServerApp extends zio.ZIOAppDefault:
-  val commandHandler: (DataMap, Commands) => ZIO[Any, Throwable, Reply] = (dataMap, command) =>
-    (Strings.handler orElse Hacks.handler)(dataMap, command)
+  def commandHandlers(dataMap: DataMap)(command: Commands): ZIO[Any, Throwable, Reply] =
+    (Strings.handler orElse Hacks.handler)((dataMap, command))
 
   def connectionHandler(connections: Connections, dataMap: DataMap)(
     connection: ZStream.Connection
@@ -29,8 +30,11 @@ object ServerApp extends zio.ZIOAppDefault:
         .map(_.map(_.toChar).mkString)
         .via(RESP.commandsScanner)
         .collectType[RESP.SuccessfulCommand]
-        .mapZIO(command => RESP.decodeCommand(command).flatMap(cmd => commandHandler(dataMap, cmd)))
-        .catchSome { case UnknownCommandError(message) => ZStream(RESP.Error(message)) }
+        .mapZIO(command => RESP.decodeCommand(command).flatMap(commandHandlers(dataMap)))
+        .catchSome {
+          case UnknownCommand(message)         => ZStream(RESP.Error(message))
+          case WrongNumberOfArguments(message) => ZStream(RESP.Error(message))
+        }
         .mapZIO(RESP.encodeReply)
         .via(ZPipeline.utf8Encode)
         .run(connection.write)

@@ -3,10 +3,16 @@ package com.pinkstack.dojodis.commands
 import com.pinkstack.dojodis.DataMap
 import com.pinkstack.dojodis.RESP.*
 import zio.ZIO
-import ZIO.{fail, succeed}
+import zio.ZIO.{fail, succeed}
 
-object Strings:
-  def incrementBy(dataMap: DataMap, key: String, n: Int = 1) =
+trait CommandHandler[Env]:
+  type In       = (DataMap, Commands)
+  type Out[Env] = ZIO[Env, Throwable, Reply]
+  type Handler  = PartialFunction[In, Out[Env]]
+  val handler: Handler
+
+object Strings extends CommandHandler[Any]:
+  private def incrementBy(dataMap: DataMap, key: String, n: Int = 1) =
     for update <- (for
         current <- dataMap.getOrElse(key, "0")
         newValue = current.toInt + n
@@ -14,13 +20,17 @@ object Strings:
       yield newValue).commit
     yield Integer(update)
 
-  val handler: PartialFunction[(DataMap, Commands), ZIO[Any, Throwable, Reply]] =
-    case (dataMap, Get(key))           =>
+  val handler: Handler =
+    case (dataMap, Get(key))        =>
       dataMap.get(key).commit.map {
         case Some(value) => BulkString(value)
         case None        => Nil
       }
-    case (dataMap, Set(key, value))    => dataMap.put(key, value).commit.as(Ok)
+    case (dataMap, Set(key, value)) => dataMap.put(key, value).commit.as(Ok)
+    case (dataMap, MSet(pairs))     =>
+      println(s"Pairs... ${pairs.map(_._1)}")
+      succeed(Ok)
+
     case (dataMap, Del(key))           => dataMap.delete(key).commit.as(Integer(1))
     case (dataMap, Exists(key))        =>
       dataMap.contains(key).commit.map {
@@ -34,8 +44,8 @@ object Strings:
         .map(_.filter(_.startsWith(pattern)))
         .map(ArrayOfStrings.apply)
 
-object Hacks:
-  val handler: PartialFunction[(DataMap, Commands), ZIO[Any, Throwable, Reply]] =
+object Hacks extends CommandHandler[Any]:
+  val handler: Handler =
     case (_, _: Command)                            => succeed(Nil)
     case (_, ConfigGet(key)) if key == "save"       => succeed(ArrayOfStrings.of("save", "3600 1 300 100 60 10000"))
     case (_, ConfigGet(key)) if key == "appendonly" => succeed(ArrayOfStrings.of("appendonly", "no"))
