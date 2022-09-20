@@ -7,18 +7,22 @@ import zio.{Chunk, UIO, ZIO}
 import scala.util.Right
 
 object RESP:
+  type Key   = String
+  type Value = String
+
   final case class Command()
-  final case class ConfigGet(key: String)
-  final case class Del(key: String)
-  final case class Exists(key: String)
-  final case class Get(key: String)
-  final case class Incr(key: String)
-  final case class IncrBy(key: String, value: Int)
+  final case class ConfigGet(key: Key)
+  final case class Del(key: Key)
+  final case class Exists(key: Key)
+  final case class Get(key: Key)
+  final case class Incr(key: Key)
+  final case class IncrBy(key: Key, value: Int)
   final case class Keys(pattern: String)
   final case class Ping()
-  final case class Set(key: String, value: String)
+  final case class Set(key: Key, value: Value)
+  final case class MSet(pairs: Seq[(Key, Value)])
 
-  type Commands = Get | Set | Del | Exists | Incr | IncrBy | Ping | Command | Keys | ConfigGet
+  type Commands = Get | Set | MSet | Del | Exists | Incr | IncrBy | Ping | Command | Keys | ConfigGet
 
   case object Ok
   type Ok   = Ok.type
@@ -37,14 +41,16 @@ object RESP:
 
   type Reply = Ok | Error | Pong | ArrayOfStrings | BulkString | Nil | Integer
 
-  final case class UnknownCommandError(message: String) extends Throwable
+  final case class UnknownCommand(message: String)         extends Throwable
+  final case class WrongNumberOfArguments(message: String) extends Throwable
+  type Errors = UnknownCommand | WrongNumberOfArguments
 
   sealed trait RESPCommand
   case object Empty                                                               extends RESPCommand
   final case class Partial(size: Int = 0, arguments: Array[String] = Array.empty) extends RESPCommand
   final case class SuccessfulCommand(arguments: Array[String])                    extends RESPCommand
 
-  private val decodeRaw: SuccessfulCommand => Either[UnknownCommandError, Commands] = rawCommand =>
+  private val decodeRaw: SuccessfulCommand => Either[Errors, Commands] = rawCommand =>
     Array(rawCommand.arguments.head.toLowerCase) ++ rawCommand.arguments.tail match {
       case Array("command", _)                                   => Right(Command())
       case Array("config", get, key) if get.toLowerCase == "get" => Right(ConfigGet(key))
@@ -56,32 +62,36 @@ object RESP:
       case Array("keys", pattern)                                => Right(Keys(pattern))
       case Array("ping")                                         => Right(Ping())
       case Array("set", key, value)                              => Right(Set(key, value))
+      // case Array("mset", pairs*)                                 =>
+      //   if (pairs.length % 2 == 0)
+      //     val tokens: Seq[(Key, Value)] = pairs.grouped(2).flatten.map { t => (t.he, v) }.toSeq
+      //     println(tokens)
+      //     Right(MSet.apply(tokens))
+      //   else Left(WrongNumberOfArguments("Wrong number of arguments for 'mset' command"))
       case Array(cmd)                                            =>
-        Left(UnknownCommandError(s"Unsupported command \"${cmd}\""))
+        Left(UnknownCommand(s"Unsupported command \"${cmd}\""))
       case Array(cmd, args*)                                     =>
-        Left(UnknownCommandError(s"Unsupported command \"${cmd}\" with arguments ${args.mkString(",")}."))
+        Left(UnknownCommand(s"Unsupported command \"${cmd}\" with arguments ${args.mkString(",")}."))
     }
 
   val decodeCommand: SuccessfulCommand => ZIO[Any, Throwable, Commands] =
     command => fromEither(decodeRaw(command))
 
+  private val NL                        = "\r\n"
   val encodeReply: Reply => UIO[String] = reply =>
-    for replyPayload <- succeed(
-        reply match {
-          case _: Ok                   => "+OK" + "\r\n"
-          case Error(message)          => "-ERR " + message + "\r\n"
-          case _: Pong                 => "+PONG" + "\r\n"
-          case ArrayOfStrings(strings) =>
-            "*" + strings.length.toString + "\r\n" + strings
-              .map(s => "$" + s"${s.length}\r\n${s}")
-              .mkString("\r\n") + "\r\n"
-          case BulkString(string)      =>
-            "$" + string.length.toString + "\r\n" + string + "\r\n"
-          case Nil                     => "$-1" + "\r\n"
-          case Integer(value)          => s":$value" + "\r\n"
-        }
-      )
-    yield replyPayload
+    succeed(
+      reply match {
+        case _: Ok                   => "+OK"
+        case Error(message)          => "-ERR " + message
+        case _: Pong                 => "+PONG"
+        case ArrayOfStrings(strings) =>
+          "*" + strings.length.toString + NL + strings.map(s => "$" + s.length.toString + NL + s).mkString(NL)
+        case BulkString(string)      =>
+          "$" + string.length.toString + NL + string
+        case Nil                     => "$-1"
+        case Integer(value)          => s":$value"
+      }
+    ).map(_ + NL)
 
   def commandsScanner: ZPipeline[Any, Throwable, String, RESPCommand] = ZPipeline
     .scan[String, RESPCommand](Empty) {

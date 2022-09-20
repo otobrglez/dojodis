@@ -2,7 +2,7 @@ name         := "dojodis"
 version      := "0.1"
 scalaVersion := "3.1.3"
 
-lazy val zioVersion  = "2.0.0"
+lazy val zioVersion  = "2.0.2"
 lazy val catsVersion = "2.8.0"
 
 libraryDependencies ++= Seq(
